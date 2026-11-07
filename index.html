@@ -1,0 +1,362 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Дембельский календарь</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&family=Saira+Stencil+One&display=swap">
+<style>
+/* Layout: one hero (days left + percent), a progress bar cut into 53 weeks, then the full 365 day grid as week rows. */
+:root {
+  --bg: #E3E6DA;
+  --surface: #D3D8C6;
+  --fg: #1C2218;
+  --muted: #5B6454;
+  --line: #B4BBA5;
+  --accent: #55672A;
+  --accent-ink: #F1F3E6;
+  --today: #D2491A;
+  --today-ink: #FFFFFF;
+  --f-stencil: "Saira Stencil One", "Oswald", Impact, sans-serif;
+  --f-display: "Oswald", "Arial Narrow", Impact, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12170F;
+    --surface: #1E261A;
+    --fg: #DDE3D0;
+    --muted: #8D9883;
+    --line: #2E3928;
+    --accent: #8FA84A;
+    --accent-ink: #10150C;
+    --today: #FF7B3A;
+    --today-ink: #1A0D05;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12170F;
+  --surface: #1E261A;
+  --fg: #DDE3D0;
+  --muted: #8D9883;
+  --line: #2E3928;
+  --accent: #8FA84A;
+  --accent-ink: #10150C;
+  --today: #FF7B3A;
+  --today-ink: #1A0D05;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 16px/1.5 var(--f-body);
+  padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1080px; margin: 0 auto; }
+
+.top {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 24px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--line);
+}
+.kicker {
+  margin: 0; font: 600 14px/1.4 var(--f-display);
+  letter-spacing: .16em; text-transform: uppercase;
+}
+.range { margin: 0; font: 400 13px/1.4 var(--f-mono); color: var(--muted); }
+
+.hero {
+  display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 24px 40px; align-items: end; padding-block: 36px 28px;
+}
+.big {
+  font: 400 clamp(96px, 20vw, 208px)/.88 var(--f-stencil);
+  font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+}
+.unit {
+  margin-top: 14px; font: 500 clamp(18px, 3vw, 24px)/1.2 var(--f-display);
+  letter-spacing: .08em; text-transform: uppercase;
+}
+.clock { margin-top: 6px; font: 400 17px/1.4 var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.pctbox { text-align: right; }
+.pct {
+  font: 600 clamp(44px, 8.5vw, 92px)/1 var(--f-display);
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.pctlabel {
+  margin-top: 8px; font: 500 13px/1.3 var(--f-display);
+  letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+}
+
+.bar {
+  position: relative; height: 30px; overflow: hidden;
+  background: var(--surface); border: 1px solid var(--line);
+}
+.fill { position: absolute; inset: 0 auto 0 0; width: 0; background: var(--accent); transition: width 1s linear; }
+.bar::after {
+  content: ""; position: absolute; inset: 0; opacity: .7;
+  background: repeating-linear-gradient(90deg, transparent 0, transparent calc(1.9178% - 1px), var(--bg) calc(1.9178% - 1px), var(--bg) 1.9178%);
+}
+.ms { position: relative; height: 46px; margin-top: 8px; }
+.ms .m {
+  position: absolute; top: 0; left: var(--p); transform: translateX(-50%);
+  font: 400 11px/1.35 var(--f-mono); color: var(--muted); text-align: center; white-space: nowrap;
+}
+.ms .m.first { transform: none; text-align: left; }
+.ms .m.last { transform: translateX(-100%); text-align: right; }
+.ms .m b { display: block; font-weight: 500; color: var(--fg); }
+
+.stats {
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 24px;
+  margin: 24px 0 0; padding: 0; border-top: 1px solid var(--line);
+}
+.stats div { padding-block: 14px; }
+.stats dt { font: 500 12px/1.3 var(--f-display); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.stats dd { margin: 4px 0 0; font: 500 21px/1.3 var(--f-mono); font-variant-numeric: tabular-nums; }
+
+.calhead {
+  display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 24px;
+  margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--line);
+}
+.calhead h2 { margin: 0; font: 600 14px/1.4 var(--f-display); letter-spacing: .16em; text-transform: uppercase; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font: 400 12px/1.4 var(--f-mono); color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border: 1px solid var(--line); display: inline-block; }
+.legend i.p { background: var(--accent); border-color: var(--accent); }
+.legend i.t { background: var(--today); border-color: var(--today); }
+
+.weeks {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 8px 36px; margin-top: 18px;
+}
+.wk { display: grid; grid-template-columns: 56px repeat(7, minmax(0, 1fr)); gap: 3px; max-width: 380px; }
+.wl { align-self: center; font: 400 11px/1.3 var(--f-mono); color: var(--muted); }
+.wl b { display: block; font-weight: 500; font-size: 12px; color: var(--fg); }
+.wl i { font-style: normal; }
+.wk.cur .wl b { color: var(--today); }
+.d {
+  aspect-ratio: 1; display: grid; place-items: center;
+  border: 1px solid var(--line); font: 400 11px/1 var(--f-mono); color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.d.past { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.d.today {
+  background: var(--today); border-color: var(--today); color: var(--today-ink); font-weight: 500;
+  animation: pulse 2.2s ease-out infinite;
+}
+@keyframes pulse {
+  0% { box-shadow: 0 0 0 0 var(--today); }
+  70%, 100% { box-shadow: 0 0 0 7px transparent; }
+}
+.note { margin: 28px 0 0; font: 400 12px/1.5 var(--f-mono); color: var(--muted); }
+
+.jump {
+  min-height: 44px; padding: 0 16px; cursor: pointer; touch-action: manipulation;
+  font: 500 13px/1 var(--f-mono); color: var(--fg); background: transparent;
+  border: 1px solid var(--fg); border-radius: 0;
+}
+.jump:hover { background: var(--fg); color: var(--bg); }
+.jump:focus-visible, .d:focus-visible { outline: 2px solid var(--today); outline-offset: 2px; }
+.readout {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  margin: 12px 0 0; padding: 10px 0; min-height: 58px;
+  background: var(--bg); border-bottom: 1px solid var(--line);
+  font: 400 13px/1.45 var(--f-mono);
+}
+.d { cursor: pointer; touch-action: manipulation; }
+.d.sel { outline: 2px solid var(--fg); outline-offset: 1px; position: relative; z-index: 1; }
+
+@media (max-width: 720px) {
+  body { padding-block: 16px 40px; }
+  .hero { grid-template-columns: minmax(0, 1fr); gap: 14px; padding-block: 24px 20px; }
+  .big { font-size: clamp(88px, 30vw, 150px); }
+  .pctbox { text-align: left; }
+  .clock { font-size: 15px; }
+  .bar { height: 26px; }
+  .ms .m { font-size: 10px; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+  .stats dd { font-size: 18px; }
+  .calhead { margin-top: 24px; }
+  .jump { width: 100%; }
+  .weeks { gap: 5px; margin-top: 12px; }
+  .wk { grid-template-columns: 46px repeat(7, minmax(0, 1fr)); max-width: none; }
+  .d { aspect-ratio: 1 / .88; font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .d.today { animation: none; }
+  .fill { transition: none; }
+}
+</style>
+
+<main class="wrap">
+  <header class="top">
+    <p class="kicker">Дембельский календарь</p>
+    <p class="range">Служба с 28 октября 2026 по 28 октября 2027, 365 дней</p>
+  </header>
+
+  <section class="hero" aria-label="Сколько осталось">
+    <div>
+      <div class="big" id="daysLeft">0</div>
+      <div class="unit" id="daysUnit">дней до дембеля</div>
+      <div class="clock" id="clock">00 ч 00 мин 00 с</div>
+    </div>
+    <div class="pctbox">
+      <div class="pct" id="pct">0,000 %</div>
+      <div class="pctlabel">службы пройдено</div>
+    </div>
+  </section>
+
+  <div class="bar" id="bar" role="progressbar" aria-label="Пройдено службы" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+    <div class="fill" id="fill"></div>
+  </div>
+  <div class="ms" id="ms"></div>
+
+  <dl class="stats">
+    <div><dt>День службы</dt><dd id="sDay">0</dd></div>
+    <div><dt>Неделя</dt><dd id="sWeek">0</dd></div>
+    <div><dt>Прошло</dt><dd id="sPassed">0</dd></div>
+    <div><dt>Осталось</dt><dd id="sLeft">0</dd></div>
+  </dl>
+
+  <div class="calhead">
+    <h2>365 дней по неделям</h2>
+    <div class="legend">
+      <span><i class="p"></i>прошло</span>
+      <span><i class="t"></i>сегодня</span>
+      <span><i></i>впереди</span>
+    </div>
+    <button type="button" class="jump" id="jump">К сегодняшнему дню</button>
+  </div>
+  <p class="readout" id="readout" aria-live="polite"></p>
+  <div class="weeks" id="weeks"></div>
+
+  <p class="note">Отсчёт идёт по времени вашего устройства. Дембель наступает в 00:00 28 октября 2027.</p>
+</main>
+
+<script>
+(function () {
+  var START = new Date(2026, 9, 28);
+  var END = new Date(2027, 9, 28);
+  var TOTAL = 365, DAY = 864e5;
+  var fmtLong = new Intl.DateTimeFormat('ru-RU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  var fmtDay = new Intl.DateTimeFormat('ru-RU', { day: 'numeric', month: 'short' });
+
+  function $(id) { return document.getElementById(id); }
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function plural(n, f) {
+    var a = n % 10, b = n % 100;
+    if (a === 1 && b !== 11) return f[0];
+    if (a >= 2 && a <= 4 && (b < 10 || b >= 20)) return f[1];
+    return f[2];
+  }
+  function wd(n) { return Math.floor(n / 7) + ' нед. ' + (n % 7) + ' дн.'; }
+
+  var weeksEl = $('weeks'), cells = [], rows = [];
+  for (var w = 0; w < 53; w++) {
+    var row = document.createElement('div');
+    row.className = 'wk';
+    var d0 = new Date(2026, 9, 28 + w * 7);
+    var lab = document.createElement('div');
+    lab.className = 'wl';
+    lab.innerHTML = '<b>Н' + (w + 1) + '</b><i>' + pad(d0.getDate()) + '.' + pad(d0.getMonth() + 1) + '</i>';
+    row.appendChild(lab);
+    for (var k = 0; k < 7; k++) {
+      var i = w * 7 + k;
+      if (i >= TOTAL) break;
+      var dt = new Date(2026, 9, 28 + i);
+      var c = document.createElement('div');
+      c.className = 'd';
+      c.textContent = dt.getDate();
+      c.dataset.i = i;
+      c.title = 'День ' + (i + 1) + ', ' + fmtLong.format(dt);
+      row.appendChild(c);
+      cells.push(c);
+    }
+    weeksEl.appendChild(row);
+    rows.push(row);
+  }
+
+  var msEl = $('ms');
+  [0, 25, 50, 75, 100].forEach(function (p) {
+    var m = document.createElement('div');
+    m.className = 'm' + (p === 0 ? ' first' : p === 100 ? ' last' : '');
+    m.style.setProperty('--p', p + '%');
+    var dt = new Date(START.getTime() + TOTAL * DAY * p / 100);
+    m.innerHTML = '<b>' + p + '%</b>' + fmtDay.format(dt).replace(/\.$/, '');
+    msEl.appendChild(m);
+  });
+
+  var fill = $('fill'), bar = $('bar'), pctEl = $('pct'), daysEl = $('daysLeft'),
+      unitEl = $('daysUnit'), clockEl = $('clock'), sDay = $('sDay'), sWeek = $('sWeek'),
+      sPassed = $('sPassed'), sLeft = $('sLeft');
+  var lastIdx = null, sel = null, readout = $('readout');
+  function show(i) {
+    var idx = lastIdx === null ? 0 : lastIdx;
+    cells.forEach(function (c, k) { c.classList.toggle('sel', k === i); });
+    var dt = new Date(2026, 9, 28 + i);
+    var rel = i === idx ? 'сегодня' : i < idx ? (idx - i) + ' дн. назад' : 'через ' + (i - idx) + ' дн.';
+    readout.textContent = 'День ' + (i + 1) + ' из ' + TOTAL + ', ' + fmtLong.format(dt) + ', ' + rel;
+  }
+  weeksEl.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('.d') : null;
+    if (!t) return;
+    sel = +t.dataset.i;
+    show(sel);
+  });
+  $('jump').addEventListener('click', function () {
+    var i = Math.min(Math.max(lastIdx, 0), TOTAL - 1);
+    sel = null;
+    show(i);
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    cells[i].scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+  });
+
+  function paint(idx) {
+    cells.forEach(function (c, i) {
+      c.className = 'd' + (i < idx ? ' past' : i === idx ? ' today' : '');
+    });
+    var curWeek = idx >= 0 && idx < TOTAL ? Math.floor(idx / 7) : -1;
+    rows.forEach(function (r, w) { r.className = 'wk' + (w === curWeek ? ' cur' : ''); });
+    var done = Math.min(Math.max(idx, 0), TOTAL);
+    var day = Math.min(Math.max(idx + 1, 0), TOTAL);
+    var weekNo = done >= TOTAL ? 53 : Math.floor(done / 7) + 1;
+    sDay.textContent = day + ' из ' + TOTAL;
+    sWeek.textContent = weekNo + ' из 53';
+    sPassed.textContent = wd(done);
+    sLeft.textContent = wd(TOTAL - done);
+    show(sel === null ? Math.min(done, TOTAL - 1) : sel);
+  }
+
+  function tick() {
+    var now = new Date();
+    var total = END - START;
+    var el = Math.min(Math.max(now - START, 0), total);
+    var pct = el / total * 100;
+    fill.style.width = pct + '%';
+    bar.setAttribute('aria-valuenow', pct.toFixed(1));
+    pctEl.textContent = pct.toFixed(3).replace('.', ',') + ' %';
+
+    var ms = Math.max(0, END - now);
+    var d = Math.floor(ms / DAY);
+    var h = Math.floor(ms % DAY / 36e5);
+    var m = Math.floor(ms % 36e5 / 6e4);
+    var s = Math.floor(ms % 6e4 / 1e3);
+    daysEl.textContent = d;
+    unitEl.textContent = ms === 0 ? 'Дембель наступил' : plural(d, ['день', 'дня', 'дней']) + ' до дембеля';
+    clockEl.textContent = pad(h) + ' ч ' + pad(m) + ' мин ' + pad(s) + ' с';
+
+    var today0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var idx = Math.round((today0 - START) / DAY);
+    if (idx !== lastIdx) { lastIdx = idx; paint(idx); }
+  }
+
+  tick();
+  setInterval(tick, 1000);
+})();
+</script>
+
+</body></html>
